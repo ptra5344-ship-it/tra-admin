@@ -1,15 +1,17 @@
 import { Redis } from "@upstash/redis";
 export default async function handler(req, res) {
   try {
-    const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+    const e = process.env, k = Object.keys(e);
+    const url = e[k.find(n => /REST_(API_)?URL$/.test(n))];
+    const token = e[k.find(n => /REST_(API_)?TOKEN$/.test(n))];
     const r = new Redis({ url, token });
     const id = req.body && req.body.id;
     if (!id) return res.status(400).json({ error: "no id" });
     await r.zadd("online", { score: Date.now(), member: id });
     await r.sadd("all_users", id);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: String(e.message || e) });
+    const online = await r.zcount("online", Date.now() - 60000, "+inf");
+    res.json({ ok: true, online });
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
   }
 }
