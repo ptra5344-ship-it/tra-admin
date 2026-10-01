@@ -8,21 +8,31 @@
   body{font-family:sans-serif;background:#111;color:#fff;text-align:center;padding:40px 16px}
   .box{display:inline-block;margin:12px;padding:24px 32px;background:#222;border-radius:16px}
   .n{font-size:56px;font-weight:bold;color:#4ade80}
+  #err{color:#f87171;margin-top:20px}
 </style>
 </head>
 <body>
 <h1>Tra Admin</h1>
 <div class="box"><div class="n" id="online">-</div>កំពុង Online</div>
 <div class="box"><div class="n" id="total">-</div>អ្នកប្រើសរុប</div>
+<div id="err"></div>
 <script>
-var key = localStorage.getItem("admin_key") || prompt("Admin key:");
+var key = localStorage.getItem("admin_key") || prompt("Admin key:") || "";
 async function load() {
-  var r = await fetch("/api/stats", { headers: { "x-admin-key": key } });
-  if (r.status === 401) { localStorage.removeItem("admin_key"); key = prompt("Key ខុស! ម្តងទៀត:"); return; }
-  localStorage.setItem("admin_key", key);
-  var d = await r.json();
-  document.getElementById("online").textContent = d.online;
-  document.getElementById("total").textContent = d.total;
+  var err = document.getElementById("err");
+  try {
+    var r = await fetch("/api/stats", { headers: { "x-admin-key": key } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+      err.textContent = "Error " + r.status + ": " + (d.error || "");
+      if (r.status === 401) { localStorage.removeItem("admin_key"); key = prompt("Key ខុស! ម្តងទៀត:") || ""; }
+      return;
+    }
+    err.textContent = "";
+    localStorage.setItem("admin_key", key);
+    document.getElementById("online").textContent = d.online;
+    document.getElementById("total").textContent = d.total;
+  } catch (e) { err.textContent = "Network error: " + e.message; }
 }
 load(); setInterval(load, 5000);
 </script>
